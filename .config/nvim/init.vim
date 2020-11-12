@@ -177,6 +177,7 @@ nmap <leader>rn <Plug>(coc-rename)
 
 " Search workspace symbols.
 nnoremap <silent><nowait> <space>s  :<C-u>CocList -I symbols<cr>
+nnoremap <silent> <esc><esc> :noh<return>
 
 " Auto close pairs and step over them
 inoremap " ""<left>
