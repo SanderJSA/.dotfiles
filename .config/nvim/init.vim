@@ -91,6 +91,11 @@ hi User4 ctermfg=239 ctermbg=239 guibg=#4e4e4e guifg=#4e4e4e
 hi PmenuSel ctermfg=black guifg=black
 hi SpecialKey ctermfg=darkgrey guifg=darkgrey
 
+" Remove background for transparency
+hi NORMAL ctermbg=NONE
+hi SignColumn ctermbg=NONE
+hi CursorLineNr ctermbg=NONE
+
 
 "
 " Editor behaviour
