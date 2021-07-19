@@ -1,3 +1,15 @@
 {
-    "coc.preferences.formatOnSaveFiletypes": ["rust", "c", "cpp"],
+    "coc.preferences.formatOnSaveFiletypes": ["rust", "c", "cpp", "python"],
+    "python.formatting.provider": "black",
+    "languageserver": {
+        "hdlChecker": {
+            "command": "ghdl-ls",
+            "filetypes": [
+                "vhdl",
+                "verilog",
+                "systemverilog"
+            ]
+        }
+    },
+    "rust-analyzer.checkOnSave.command": "clippy"
 }

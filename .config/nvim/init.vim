@@ -3,6 +3,19 @@
 "
 
 
+"
+" Plug install
+"
+
+
+call plug#begin()
+Plug 'neoclide/coc.nvim', {'branch': 'release'}
+Plug 'tpope/vim-fugitive'
+Plug 'rakr/vim-one'
+Plug 'vlime/vlime', {'rtp': 'vim/'}
+call plug#end()
+
+
 " Read if updated, write on leave, force utf-8
 set autoread
 set autowrite
@@ -25,12 +38,12 @@ filetype plugin on
 
 " Colorscheme
 syntax enable
-colorscheme one
 set background=dark
 let g:one_allow_italics = 1
+colorscheme one
 
 " Column limit
-set cc=80
+set cc=100
 highlight ColorColumn ctermbg=darkgrey
 
 " highlight search
@@ -73,6 +86,7 @@ set laststatus=2
 set noshowmode
 set statusline=
 set statusline+=%0*\ %{toupper(g:currentmode[mode()])}\  " The current mode
+set statusline+=%2*\ %{FugitiveStatusline()}\            " Git status
 set statusline+=%1*\ %<%F%m%r%h%w\                       " File path, modified, readonly, helpfile, preview
 set statusline+=%=                                       " Right Side
 set statusline+=%{StatusDiagnostic()}\                       " Show diagnostic errors
@@ -118,6 +132,9 @@ set nocompatible
 " Search
 set ignorecase smartcase
 
+" Replace grep with ripgrep
+set grepprg=rg\ --vimgrep\ --smart-case\ --follow
+
 
 "
 " Mappings
@@ -127,8 +144,9 @@ set ignorecase smartcase
 " Map leader to space
 let mapleader = "\<Space>"
 
-" Save shortcut
-nnoremap <c-s> :w<cr>
+" Save and exit shortcut
+nnoremap <leader>w :w<cr>
+nnoremap <leader>q :q<cr>
 
 " Use leader-[np] to change tab
 nmap <silent> <leader>n :tabnext<CR>
@@ -139,6 +157,9 @@ nmap <silent> <leader>h :wincmd h<CR>
 nmap <silent> <leader>j :wincmd j<CR>
 nmap <silent> <leader>k :wincmd k<CR>
 nmap <silent> <leader>l :wincmd l<CR>
+
+" Open a file
+nmap <silent> <leader>f :FZF<CR>
 
 " Tab and Shift+Tab completion and cycling
 inoremap <silent><expr> <TAB>
@@ -180,15 +201,16 @@ nnoremap <silent><nowait> <space>s  :<C-u>CocList -I symbols<cr>
 nnoremap <silent> <esc><esc> :noh<return>
 
 " Auto close pairs and step over them
-inoremap " ""<left>
-inoremap ' ''<left>
-inoremap ( ()<left>
-inoremap <expr> )  strpart(getline('.'), col('.')-1, 1) == ")" ? "\<Right>" : ")"
-inoremap [ []<left>
-inoremap <expr> ]  strpart(getline('.'), col('.')-1, 1) == "]" ? "\<Right>" : "]"
+"inoremap ( ()<left>
+"inoremap <expr> )  strpart(getline('.'), col('.')-1, 1) == ")" ? "\<Right>" : ")"
+"inoremap [ []<left>
+"inoremap <expr> ]  strpart(getline('.'), col('.')-1, 1) == "]" ? "\<Right>" : "]"
 inoremap {<CR> {<CR>}<ESC>O
 inoremap {;<CR> {<CR>};<ESC>O
 inoremap <expr> }  strpart(getline('.'), col('.')-1, 1) == "}" ? "\<Right>" : "}"
+
+" Open git status
+nnoremap <leader>gs :G<cr>
 
 
 "
@@ -200,13 +222,12 @@ let g:netrw_banner = 0
 let g:netrw_liststyle = 3
 let g:netrw_browse_split = 3
 let g:netrw_winsize = 10
-let g:netrw_list_hide='\(^\|\s\s\)\zs\.\S\+'
+let g:netrw_list_hide='\(^\|\s\s\)\zs\.\S\+,.*\.o$,.*\.d$'
 let g:netrw_dirhistmax = 0
 
 
 "
 " Coc nvim diagnostic
-"
 "
 
 
