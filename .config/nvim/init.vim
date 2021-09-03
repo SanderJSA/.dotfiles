@@ -1,18 +1,16 @@
 "
-" General behaviour
-"
-
-
-"
 " Plug install
 "
 
 
 call plug#begin()
-Plug 'neoclide/coc.nvim', {'branch': 'release'}
+Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
+Plug 'neovim/nvim-lspconfig'
+Plug 'hrsh7th/nvim-compe'
+Plug 'L3MON4D3/LuaSnip'
 Plug 'tpope/vim-fugitive'
 Plug 'rakr/vim-one'
-Plug 'vlime/vlime', {'rtp': 'vim/'}
+"Plug 'vlime/vlime', {'rtp': 'vim/'}
 call plug#end()
 
 
@@ -26,8 +24,10 @@ set shortmess+=c
 set showcmd
 set nobackup
 set nowritebackup
+set noswapfile
 set mouse=a
 set wildmenu
+set updatetime=300
 filetype plugin on
 
 
@@ -103,7 +103,7 @@ hi User2 ctermfg=007 ctermbg=236 guibg=#303030 guifg=#adadad
 hi User3 ctermfg=236 ctermbg=236 guibg=#303030 guifg=#303030
 hi User4 ctermfg=239 ctermbg=239 guibg=#4e4e4e guifg=#4e4e4e
 hi PmenuSel ctermfg=black guifg=black
-hi SpecialKey ctermfg=darkgrey guifg=darkgrey
+hi Pmenu ctermfg=darkgrey guifg=darkgrey
 
 " Remove background for transparency
 hi NORMAL ctermbg=NONE
@@ -161,56 +161,16 @@ nmap <silent> <leader>l :wincmd l<CR>
 " Open a file
 nmap <silent> <leader>f :FZF<CR>
 
-" Tab and Shift+Tab completion and cycling
-inoremap <silent><expr> <TAB>
-      \ pumvisible() ? "\<C-n>" :
-      \ <SID>check_back_space() ? "\<TAB>" :
-      \ coc#refresh()
-inoremap <expr><S-TAB> pumvisible() ? "\<C-p>" : "\<C-h>"
-
-function! s:check_back_space() abort
-  let col = col('.') - 1
-  return !col || getline('.')[col - 1]  =~# '\s'
-endfunction
-
-" Move between errors/warnings
-nmap <silent> <C-k> <Plug>(coc-diagnostic-prev)
-nmap <silent> <C-j> <Plug>(coc-diagnostic-next)
-
-" GoTo code navigation.
-nmap <silent> gd <Plug>(coc-definition)
-nmap <silent> gy <Plug>(coc-type-definition)
-nmap <silent> gi <Plug>(coc-implementation)
-nmap <silent> gr <Plug>(coc-references)
-
-" Show documentation in preview window.
-nnoremap <silent> K :call <SID>show_documentation()<CR>
-function! s:show_documentation()
-  if (index(['vim','help'], &filetype) >= 0)
-    execute 'h '.expand('<cword>')
-  else
-    call CocAction('doHover')
-  endif
-endfunction
-
-" Symbol renaming.
-nmap <leader>rn <Plug>(coc-rename)
-
-" Search workspace symbols.
-nnoremap <silent><nowait> <space>s  :<C-u>CocList -I symbols<cr>
-nnoremap <silent> <esc><esc> :noh<return>
-
 " Auto close pairs and step over them
-"inoremap ( ()<left>
-"inoremap <expr> )  strpart(getline('.'), col('.')-1, 1) == ")" ? "\<Right>" : ")"
-"inoremap [ []<left>
-"inoremap <expr> ]  strpart(getline('.'), col('.')-1, 1) == "]" ? "\<Right>" : "]"
 inoremap {<CR> {<CR>}<ESC>O
 inoremap {;<CR> {<CR>};<ESC>O
 inoremap <expr> }  strpart(getline('.'), col('.')-1, 1) == "}" ? "\<Right>" : "}"
 
 " Open git status
 nnoremap <leader>gs :G<cr>
+
+" Clear search
+nnoremap <silent> <esc><esc> :noh<return>
 
 
 "
@@ -227,19 +187,193 @@ let g:netrw_dirhistmax = 0
 
 
 "
-" Coc nvim diagnostic
+" LSP config
 "
 
 
+lua << EOF
+local nvim_lsp = require('lspconfig')
+
+local on_attach = function(client, bufnr)
+  local function buf_set_keymap(...) vim.api.nvim_buf_set_keymap(bufnr, ...) end
+  local function buf_set_option(...) vim.api.nvim_buf_set_option(bufnr, ...) end
+
+  local opts = { noremap=true, silent=true }
+
+  -- Show documentation
+  buf_set_keymap('n', 'K', '<Cmd>lua vim.lsp.buf.hover()<CR>', opts)
+
+  -- LSP navigation
+  buf_set_keymap('n', 'gd', '<Cmd>lua vim.lsp.buf.definition()<CR>', opts)
+  buf_set_keymap('n', 'gr', '<cmd>lua vim.lsp.buf.references()<CR>', opts)
+  buf_set_keymap('n', 'gy', '<cmd>lua vim.lsp.buf.type_definition()<CR>', opts)
+  buf_set_keymap('n', 'gi', '<cmd>lua vim.lsp.buf.implementation()<CR>', opts)
+  buf_set_keymap('n', 'ga', '<cmd>lua vim.lsp.buf.code_action()<CR>', opts)
+
+  -- Diagnostic actions 
+  buf_set_keymap('n', '[d', '<cmd>lua vim.lsp.diagnostic.goto_prev()<CR>', opts)
+  buf_set_keymap('n', ']d', '<cmd>lua vim.lsp.diagnostic.goto_next()<CR>', opts)
+end
+
+local capabilities = vim.lsp.protocol.make_client_capabilities()
+capabilities.textDocument.completion.completionItem.snippetSupport = true
+
+local servers = { "pyright", "clangd" }
+for _, lsp in ipairs(servers) do
+  nvim_lsp[lsp].setup {
+    on_attach = on_attach,
+    capabilities = capabilities,
+    flags = {
+      debounce_text_changes = 150,
+    }
+  }
+
+require('lspconfig').rust_analyzer.setup {
+  on_attach = on_attach,
+  capabilities = capabilities,
+  settings = {
+    ["rust-analyzer"] = { 
+      checkOnSave = {
+        command = "clippy"
+      },
+      assist = {
+        importGranularity = "module",
+        importPrefix = "by_self",
+      },
+      cargo = {
+        loadOutDirsFromCheck = true
+      },
+      procMacro = {
+        enable = true
+      },
+    }
+  }
+}
+end
+
+vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(
+  vim.lsp.diagnostic.on_publish_diagnostics, {
+    virtual_text = false;
+    update_in_insert = false,
+  }
+)
+
+vim.fn.sign_define('LspDiagnosticsSignError', { text = "✖", texthl = "LspDiagnosticsDefaultError" })
+vim.fn.sign_define('LspDiagnosticsSignWarning', { text = "⚠", texthl = "LspDiagnosticsDefaultWarning" })
+vim.fn.sign_define('LspDiagnosticsSignHint', { text = "⚠" })
+
+EOF
+autocmd CursorHold * lua vim.lsp.diagnostic.show_line_diagnostics()
+autocmd CursorHoldI * silent! lua vim.lsp.buf.signature_help()
+
+highlight LspDiagnosticsDefaultError guifg=Red, ctermfg=Red
+highlight LspDiagnosticsDefaultHint guifg=#FFCC00 ctermfg=Yellow
+highlight LspDiagnosticsDefaultWarning guifg=#FFCC00 ctermfg=Yellow
+
+
 function! StatusDiagnostic() abort
-  let info = get(b:, 'coc_diagnostic_info', {})
-  if empty(info) | return '' | endif
-  let msgs = []
-  if get(info, 'error', 0)
-    call add(msgs, info['error'] . '✖')
+  let sl = ''
+  if luaeval('not vim.tbl_isempty(vim.lsp.buf_get_clients(0))')
+    let sl .= luaeval("vim.lsp.diagnostic.get_count(0, [[Error]])") . '✖ '
+    let sl .= luaeval("vim.lsp.diagnostic.get_count(0, [[Hint]]) + vim.lsp.diagnostic.get_count(0, [[Warning]])") . '⚠'
   endif
-  if get(info, 'warning', 0)
-    call add(msgs, info['warning'] . '⚠')
-  endif
-  return join(msgs, ' '). ' ' . get(g:, 'coc_status', '')
+  return sl
 endfunction
+
+autocmd BufWritePre * lua vim.lsp.buf.formatting_sync()
+
+
+"
+" Completion
+"
+
+
+set completeopt=menuone,noselect
+lua << EOF
+-- Compe setup
+require'compe'.setup {
+  enabled = true;
+  autocomplete = true;
+  debug = false;
+  min_length = 1;
+  preselect = 'enable';
+  throttle_time = 80;
+  source_timeout = 200;
+  incomplete_delay = 400;
+  documentation = true;
+
+  source = {
+    nvim_lsp = true,
+    luasnip = true,
+    buffer = true,
+    path = true,
+    calc = true,
+  };
+}
+
+local t = function(str)
+  return vim.api.nvim_replace_termcodes(str, true, true, true)
+end
+
+local check_back_space = function()
+    local col = vim.fn.col('.') - 1
+    if col == 0 or vim.fn.getline('.'):sub(col, col):match('%s') then
+        return true
+    else
+        return false
+    end
+end
+
+-- Use (s-)tab to:
+--- move to prev/next item in completion menuone
+--- jump to prev/next snippet's placeholder
+local luasnip = require 'luasnip'
+
+_G.tab_complete = function()
+  if vim.fn.pumvisible() == 1 then
+    return t '<C-n>'
+  --elseif luasnip.expand_or_jumpable() then
+  --  return t '<Plug>luasnip-expand-or-jump'
+  elseif check_back_space() then
+    return t '<Tab>'
+  else
+    return vim.fn['compe#complete']()
+  end
+end
+
+_G.s_tab_complete = function()
+  if vim.fn.pumvisible() == 1 then
+    return t '<C-p>'
+  --elseif luasnip.jumpable(-1) then
+  --  return t '<Plug>luasnip-jump-prev'
+  else
+    return t '<S-Tab>'
+  end
+end
+
+vim.api.nvim_set_keymap("i", "<Tab>", "v:lua.tab_complete()", {expr = true})
+vim.api.nvim_set_keymap("s", "<Tab>", "v:lua.tab_complete()", {expr = true})
+vim.api.nvim_set_keymap("i", "<S-Tab>", "v:lua.s_tab_complete()", {expr = true})
+vim.api.nvim_set_keymap("s", "<S-Tab>", "v:lua.s_tab_complete()", {expr = true})
+
+vim.api.nvim_set_keymap('i', '<cr>', 'compe#confirm({ "keys": "<cr>" })', { expr = true })
+vim.api.nvim_set_keymap('i', '<c-space>', 'compe#complete()', { expr = true })
+EOF
+inoremap <silent><expr> <C-e>     compe#close('<C-e>')
+inoremap <silent><expr> <C-f>     compe#scroll({ 'delta': +4 })
+inoremap <silent><expr> <C-d>     compe#scroll({ 'delta': -4 })
+
+
+"
+" Treesitter config
+"
+
+lua << EOF
+require'nvim-treesitter.configs'.setup {
+  ensure_installed = { "rust", "python", "c", "cpp", "bash" },
+  highlight = {
+    enable = true,
+    additional_vim_regex_highlighting = false,
+  },
+}
+EOF
