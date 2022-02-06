@@ -5,7 +5,6 @@ SETUVAR _fish_abbr_ga:git\x20add
 SETUVAR _fish_abbr_gc:git\x20commit
 SETUVAR _fish_abbr_gco:git\x20checkout
 SETUVAR _fish_abbr_gd:git\x20diff
-SETUVAR _fish_abbr_girl__penis:git\x20push\x20\x2d\x2dforce
 SETUVAR _fish_abbr_gl:git\x20pull
 SETUVAR _fish_abbr_glo:git\x20log\x20\x2d\x2doneline\x20\x2d\x2ddecorate
 SETUVAR _fish_abbr_gp:git\x20push

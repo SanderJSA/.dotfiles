@@ -42,3 +42,11 @@ end
 
 alias config='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 config config status.showUntrackedFiles no
+
+function flamegraph
+    perf record --call-graph dwarf $argv
+    perf script | inferno-collapse-perf | inferno-flamegraph > flamegraph.svg
+    firefox flamegraph.svg
+end
+
+eval (ssh-agent -c) > /dev/null
