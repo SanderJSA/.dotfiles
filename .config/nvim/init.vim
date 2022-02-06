@@ -29,6 +29,8 @@ set mouse=a
 set wildmenu
 set updatetime=300
 filetype plugin on
+let g:is_chicken = 1
+au BufNewFile,BufRead *.sld setl filetype=scheme
 
 
 "
@@ -157,9 +159,13 @@ nmap <silent> <leader>h :wincmd h<CR>
 nmap <silent> <leader>j :wincmd j<CR>
 nmap <silent> <leader>k :wincmd k<CR>
 nmap <silent> <leader>l :wincmd l<CR>
+nmap <silent> <leader>s <C-w>r
 
-" Open a file
+" File exploring 
 nmap <silent> <leader>f :FZF<CR>
+nmap <leader>dd :Lexplore %:p:h<CR>
+nmap <Leader>da :Lexplore<CR>
+nmap <leader>tf :!touch 
 
 " Auto close pairs and step over them
 inoremap {<CR> {<CR>}<ESC>O
@@ -178,10 +184,11 @@ nnoremap <silent> <esc><esc> :noh<return>
 "
 
 
+let g:netrw_keepdir = 0
 let g:netrw_banner = 0
 let g:netrw_liststyle = 3
 let g:netrw_browse_split = 3
-let g:netrw_winsize = 10
+let g:netrw_winsize = 30
 let g:netrw_list_hide='\(^\|\s\s\)\zs\.\S\+,.*\.o$,.*\.d$'
 let g:netrw_dirhistmax = 0
 
@@ -211,8 +218,8 @@ local on_attach = function(client, bufnr)
   buf_set_keymap('n', 'ga', '<cmd>lua vim.lsp.buf.code_action()<CR>', opts)
 
   -- Diagnostic actions 
-  buf_set_keymap('n', '[d', '<cmd>lua vim.lsp.diagnostic.goto_prev()<CR>', opts)
-  buf_set_keymap('n', ']d', '<cmd>lua vim.lsp.diagnostic.goto_next()<CR>', opts)
+  buf_set_keymap('n', '[d', '<cmd>lua vim.diagnostic.goto_prev()<CR>', opts)
+  buf_set_keymap('n', ']d', '<cmd>lua vim.diagnostic.goto_next()<CR>', opts)
 end
 
 local capabilities = vim.lsp.protocol.make_client_capabilities()
@@ -227,6 +234,7 @@ for _, lsp in ipairs(servers) do
       debounce_text_changes = 150,
     }
   }
+end
 
 require('lspconfig').rust_analyzer.setup {
   on_attach = on_attach,
@@ -234,7 +242,8 @@ require('lspconfig').rust_analyzer.setup {
   settings = {
     ["rust-analyzer"] = { 
       checkOnSave = {
-        command = "clippy"
+        command = "clippy",
+        extraArgs={"--target-dir", "/tmp/rust-analyzer-check"}
       },
       assist = {
         importGranularity = "module",
@@ -249,7 +258,6 @@ require('lspconfig').rust_analyzer.setup {
     }
   }
 }
-end
 
 vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(
   vim.lsp.diagnostic.on_publish_diagnostics, {
@@ -263,7 +271,7 @@ vim.fn.sign_define('LspDiagnosticsSignWarning', { text = "⚠", texthl = "LspDia
 vim.fn.sign_define('LspDiagnosticsSignHint', { text = "⚠" })
 
 EOF
-autocmd CursorHold * lua vim.lsp.diagnostic.show_line_diagnostics()
+autocmd CursorHold * lua vim.diagnostic.open_float(0, {scope="line", focus=false})
 autocmd CursorHoldI * silent! lua vim.lsp.buf.signature_help()
 
 highlight LspDiagnosticsDefaultError guifg=Red, ctermfg=Red
@@ -274,8 +282,8 @@ highlight LspDiagnosticsDefaultWarning guifg=#FFCC00 ctermfg=Yellow
 function! StatusDiagnostic() abort
   let sl = ''
   if luaeval('not vim.tbl_isempty(vim.lsp.buf_get_clients(0))')
-    let sl .= luaeval("vim.lsp.diagnostic.get_count(0, [[Error]])") . '✖ '
-    let sl .= luaeval("vim.lsp.diagnostic.get_count(0, [[Hint]]) + vim.lsp.diagnostic.get_count(0, [[Warning]])") . '⚠'
+    let sl .= luaeval("#vim.diagnostic.get(0, { severity = vim.diagnostic.severity.ERROR })") . '✖ '
+    let sl .= luaeval("#vim.diagnostic.get(0, { severity = vim.diagnostic.severity.WARN }) + #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.HINT })") . '⚠'
   endif
   return sl
 endfunction
